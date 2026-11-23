@@ -1,0 +1,16 @@
+.git
+.agents
+shorts_workspace
+upload
+dist
+tests
+__pycache__
+*.pyc
+*.pyo
+*.zip
+.gemini
+flowjuggle
+image.png
+.pytest_cache
+.github
+env-setup.*

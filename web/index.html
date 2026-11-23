@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Seamless Shorts Studio & Player — load YouTube Shorts and a song, preview synced transitions with cut-point auditioning, and export clips or WAV slices directly in your browser." />
+  <title>Seamless Shorts Studio &amp; Player</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="2" width="12" height="20" rx="2.5"></rect>
+          <path d="M10 9.5v5l4.5-2.5-4.5-2.5z" fill="currentColor" stroke="none"></path>
+        </svg>
+      </div>
+      <div class="brand-copy">
+        <h1>Seamless Shorts Studio</h1>
+        <p class="brand-subtitle">Sync one song continuously across vertical Shorts — zero dropped beats</p>
+      </div>
+    </div>
+
+    <div class="topbar-controls">
+      <span class="status-badge" id="modeBadge" data-mode="standalone">Standalone Mode</span>
+      <button type="button" class="btn btn-ghost btn-sm" id="shortcutsBtn" aria-expanded="false" aria-controls="shortcutsPopover">
+        Shortcuts
+      </button>
+      <button type="button" class="btn btn-ghost btn-sm" id="themeToggleBtn" aria-pressed="false" title="Switch between Dark and Light studio themes">
+        <span id="themeIcon" aria-hidden="true">☀</span>
+        <span id="themeLabel">Light Mode</span>
+      </button>
+    </div>
+  </header>
+
+  <aside class="shortcuts-popover" id="shortcutsPopover" hidden aria-label="Keyboard shortcuts">
+    <div class="shortcuts-header">
+      <strong>Keyboard Shortcuts</strong>
+      <button type="button" class="btn btn-ghost btn-xs" id="closeShortcutsBtn" aria-label="Close shortcuts">✕</button>
+    </div>
+    <ul class="shortcuts-list">
+      <li><kbd>Space</kbd> / <kbd>K</kbd><span>Play or Pause</span></li>
+      <li><kbd>J</kbd> / <kbd>L</kbd><span>Jump −5s / +5s</span></li>
+      <li><kbd>[</kbd> / <kbd>]</kbd><span>Audition Previous / Next Cut (−2s)</span></li>
+      <li><kbd>M</kbd><span>Mute / Unmute Clip Original Audio</span></li>
+    </ul>
+  </aside>
+
+  <nav class="stepper" aria-label="3-Step Workflow">
+    <a href="#loadCard" class="step-item is-active" id="step1Indicator">
+      <span class="step-num">1</span>
+      <span class="step-text">
+        <strong>Load Shorts &amp; Song</strong>
+        <small id="step1Sub">Drop clips, folder, or .zip</small>
+      </span>
+    </a>
+    <a href="#timelineCard" class="step-item" id="step2Indicator">
+      <span class="step-num">2</span>
+      <span class="step-text">
+        <strong>Preview &amp; Audition Cuts</strong>
+        <small id="step2Sub">Check every −2s transition</small>
+      </span>
+    </a>
+    <a href="#exportCard" class="step-item" id="step3Indicator">
+      <span class="step-num">3</span>
+      <span class="step-text">
+        <strong>Download &amp; Export</strong>
+        <small id="step3Sub">Clips, WAV slices &amp; ZIP</small>
+      </span>
+    </a>
+  </nav>
+
+  <main class="studio-grid">
+    <!-- LEFT COLUMN: 9:16 Stage, Transport & Audio Mixer -->
+    <section class="stage-column" aria-label="Video Player and Audio Mixer">
+      <div class="panel player-panel">
+        <div class="panel-header">
+          <div>
+            <h2 id="playerTitle">9:16 Synced Preview</h2>
+            <p class="panel-sub" id="playerModeSubtitle">Ready to load Shorts or workspace</p>
+          </div>
+          <div class="segmented" role="group" aria-label="Playback source mode">
+            <button type="button" class="seg-btn is-active" id="modeSequenceBtn" title="Play individual Shorts sequentially with synced song">Clips A/B</button>
+            <button type="button" class="seg-btn" id="modeVerifyBtn" disabled title="Play stitched H.264 verification video">Full Verify</button>
+          </div>
+        </div>
+
+        <div class="notice notice-warn" id="demoBanner" hidden>
+          <strong>Demo Beat Track active:</strong> You are hearing the built-in 120 BPM demo track. Load your real <code>.mp3</code> or <code>.wav</code> song anytime to preview and export with your music.
+        </div>
+
+        <div class="notice notice-info" id="codecNotice" hidden role="status">
+          <div class="notice-body">
+            <strong>Video codec note:</strong>
+            <span id="codecNoticeText">Your browser could not decode this clip's codec (for example AV1 or VP9). Timeline scrubbing and song audio preview continue normally — switch to <em>Full Verify</em> (H.264) or enable <em>Browser-Safe H.264</em> in Studio mode.</span>
+          </div>
+          <button type="button" class="btn btn-ghost btn-xs" id="dismissCodecNoticeBtn" aria-label="Dismiss codec notice">✕</button>
+        </div>
+
+        <div class="player-frame-outer">
+          <div class="player-stage" id="playerStage">
+            <video id="videoA" class="stage-video is-active" playsinline preload="metadata"></video>
+            <video id="videoB" class="stage-video" playsinline preload="metadata"></video>
+            <div class="stage-empty" id="stageEmpty">
+              <div class="stage-empty-icon" aria-hidden="true">9:16</div>
+              <p class="stage-empty-title">No Shorts loaded yet</p>
+              <p class="stage-empty-hint">Drag &amp; drop your Shorts folder, MP4 clips, workspace <code>.zip</code>, or a song on the right to begin.</p>
+            </div>
+            <div class="stage-overlay-pill" id="activeCutBadge" hidden>Part 1</div>
+          </div>
+          <audio id="songAudio" preload="auto"></audio>
+        </div>
+
+        <div class="now-playing-bar">
+          <div class="now-playing-info">
+            <strong id="nowPlayingTitle">Waiting for media</strong>
+            <span id="nowPlayingMeta" class="muted-text">Load clips to inspect timing &amp; transitions</span>
+          </div>
+          <div class="time-readout" id="timeReadout">0:00.0 / 0:00.0</div>
+        </div>
+
+        <div class="transport-bar" role="toolbar" aria-label="Player transport controls">
+          <button type="button" class="btn btn-primary" id="playPauseBtn" disabled>
+            <span id="playPauseIcon" aria-hidden="true">▶</span>
+            <span id="playPauseLabel">Play</span>
+          </button>
+          <button type="button" class="btn btn-accent" id="auditionCutBtn" disabled title="Jump 2 seconds before the current/next cut to hear the seam">
+            Audition Cut (−2s)
+          </button>
+          <div class="transport-group">
+            <button type="button" class="btn btn-sm" id="prevCutBtn" disabled title="Previous cut ([)">Prev Cut</button>
+            <button type="button" class="btn btn-sm" id="nextCutBtn" disabled title="Next cut (])">Next Cut</button>
+          </div>
+        </div>
+
+        <div class="transport-secondary">
+          <button type="button" class="btn btn-ghost btn-xs" id="loopClipBtn" aria-pressed="false" title="Toggle between looping the current clip or playing all clips in sequence">
+            Loop: Full Sequence
+          </button>
+          <label class="inline-select">
+            <span>Speed</span>
+            <select id="speedSelect" aria-label="Playback speed">
+              <option value="0.5">0.5×</option>
+              <option value="1" selected>1×</option>
+              <option value="1.25">1.25×</option>
+              <option value="1.5">1.5×</option>
+              <option value="2">2×</option>
+            </select>
+          </label>
+          <button type="button" class="btn btn-ghost btn-xs" id="fullscreenBtn" title="Toggle fullscreen player">Fullscreen</button>
+        </div>
+
+        <!-- Audio Replacement & Mixer -->
+        <div class="mixer-box" aria-label="Audio replacement and volume mixer">
+          <div class="mixer-header">
+            <div class="mixer-song-meta">
+              <span class="mixer-label">Active Song Track</span>
+              <strong id="activeSongDisplay">No song loaded</strong>
+            </div>
+            <div class="mixer-header-actions">
+              <button type="button" class="btn btn-sm" id="quickSongBtn">Load / Replace Song</button>
+              <button type="button" class="btn btn-sm" id="muteVideoBtn" aria-pressed="true" title="Mute original clip audio (M)">Orig Audio: Muted</button>
+            </div>
+          </div>
+
+          <div class="mixer-sliders">
+            <div class="slider-row">
+              <label for="videoVolSlider">Video Clip Audio</label>
+              <input type="range" id="videoVolSlider" min="0" max="100" value="0" />
+              <span class="slider-val" id="videoVolValue">0%</span>
+            </div>
+            <div class="slider-row">
+              <label for="songVolSlider">Replacement Song</label>
+              <input type="range" id="songVolSlider" min="0" max="100" value="100" />
+              <span class="slider-val" id="songVolValue">100%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: 1. Load, Studio Engine, 2. Timeline + Clips, 3. Export -->
+    <div class="workbench-column">
+      <!-- STEP 1: LOAD SHORTS & SONG -->
+      <section class="panel" id="loadCard" aria-labelledby="loadHeading">
+        <div class="panel-header">
+          <div>
+            <h2 id="loadHeading">1. Load Shorts, Song &amp; Optional Stats</h2>
+            <p class="panel-sub">Works 100% locally in your browser — nothing is uploaded unless you run local Studio</p>
+          </div>
+          <span class="count-chip" id="loadSummary">0 clips loaded</span>
+        </div>
+
+        <div class="dropzone" id="dropzone" aria-label="Drop Shorts MP4s, workspace folder, zip archive, song audio, or YouTube CSV here">
+          <div class="dropzone-icon" aria-hidden="true">⬆</div>
+          <p class="dropzone-title">Drag &amp; drop files, a workspace folder, or a <code>.zip</code> archive here</p>
+          <p class="dropzone-hint">Supports MP4/WebM/MOV clips, MP3/WAV/M4A songs, <code>manifest.json</code>, and YouTube Studio <code>.csv</code> metadata</p>
+          <div class="dropzone-actions">
+            <button type="button" class="btn btn-sm btn-accent" id="pickFilesBtn">Choose Files</button>
+            <button type="button" class="btn btn-sm" id="pickFolderBtn">Choose Folder</button>
+            <button type="button" class="btn btn-sm" id="pickZipBtn">Open .ZIP</button>
+            <button type="button" class="btn btn-sm" id="pickSongBtn">Choose Song</button>
+            <button type="button" class="btn btn-sm" id="pickCsvBtn">Add YouTube .CSV</button>
+          </div>
+        </div>
+
+        <input id="filesInput" type="file" multiple accept="video/*,audio/*,.mp4,.mov,.webm,.mkv,.m4v,.mp3,.wav,.m4a,.aac,.flac,.ogg,.json,.csv" hidden />
+        <input id="folderInput" type="file" webkitdirectory directory multiple hidden />
+        <input id="zipInput" type="file" accept=".zip,application/zip" hidden />
+        <input id="songInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus" hidden />
+        <input id="csvInput" type="file" accept=".csv,text/csv" hidden />
+
+        <div class="load-meta-bar">
+          <label class="inline-field">
+            <span>Transition fade (ms)</span>
+            <input type="number" id="standaloneFadeMs" min="0" max="500" value="15" />
+          </label>
+          <span class="muted-text" id="csvStatusText">No CSV metadata loaded</span>
+          <button type="button" class="btn btn-ghost btn-xs" id="clearWorkspaceBtn" hidden>Clear Loaded Files</button>
+        </div>
+      </section>
+
+      <!-- STUDIO MODE PANEL (visible only when Python backend /api/health responds ok:true) -->
+      <section class="panel studio-panel" id="studioPanel" hidden aria-labelledby="studioHeading">
+        <div class="panel-header">
+          <div>
+            <h2 id="studioHeading">Local Python Studio Engine</h2>
+            <p class="panel-sub">Download YouTube Shorts, slice full-quality MP4s with FFmpeg, and build H.264 verification</p>
+          </div>
+          <div class="tool-pills" id="studioToolPills">
+            <span class="tool-pill">Checking tools...</span>
+          </div>
+        </div>
+
+        <div class="studio-form">
+          <div class="form-row">
+            <label for="playlistUrl">YouTube Shorts Playlist URL</label>
+            <input type="text" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=..." />
+          </div>
+
+          <div class="form-row">
+            <label for="songSelect">Studio Song Track (select existing or drag &amp; drop to upload)</label>
+            <div class="studio-song-drop" id="studioSongDrop">
+              <div class="song-upload-row">
+                <select id="songSelect"></select>
+                <button type="button" class="btn btn-sm" id="studioUploadSongBtn">Upload Song to Studio</button>
+                <input type="file" id="studioSongFileInput" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg" hidden />
+              </div>
+              <p class="field-hint" id="studioSongStatus">Drop an audio file here to upload to Studio</p>
+            </div>
+          </div>
+
+          <div class="form-grid-3">
+            <div class="form-row">
+              <label for="maxDownloads">Max Shorts (0 = all)</label>
+              <input type="number" id="maxDownloads" min="0" max="200" value="10" />
+            </div>
+            <div class="form-row">
+              <label for="fadeMs">Audio Fade (ms)</label>
+              <input type="number" id="fadeMs" min="0" max="500" value="15" />
+            </div>
+            <div class="form-row">
+              <label for="cookiesFromBrowser">Browser Cookies (optional)</label>
+              <select id="cookiesFromBrowser">
+                <option value="">None (public playlist)</option>
+                <option value="chrome">Chrome</option>
+                <option value="edge">Microsoft Edge</option>
+                <option value="firefox">Firefox</option>
+                <option value="brave">Brave</option>
+                <option value="chromium">Chromium</option>
+                <option value="safari">Safari</option>
+              </select>
+            </div>
+          </div>
+          <p class="field-hint">Cookies are only needed on your own computer if YouTube asks to confirm you are signed in.</p>
+
+          <div class="check-group">
+            <label class="check-label">
+              <input type="checkbox" id="skipDownload" checked />
+              <span>Reuse already-downloaded Shorts if present (swap songs in seconds)</span>
+            </label>
+            <label class="check-label">
+              <input type="checkbox" id="browserSafe" />
+              <span>Browser-Safe H.264 re-encode for individual Parts (best compatibility everywhere)</span>
+            </label>
+          </div>
+
+          <button type="button" class="btn btn-primary btn-block" id="runBtn">Run &amp; Sync Shorts</button>
+
+          <div class="job-monitor">
+            <div class="job-status-line">
+              <strong id="stepLabel">Idle</strong>
+              <span id="pctLabel" class="tabular">0%</span>
+            </div>
+            <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressBar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <pre class="log-box" id="logBox">Ready.</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2: INTERACTIVE MULTI-TRACK TIMELINE & WAVEFORM -->
+      <section class="panel" id="timelineCard" aria-labelledby="timelineHeading">
+        <div class="panel-header">
+          <div>
+            <h2 id="timelineHeading">2. Interactive Multi-Track Timeline &amp; Cut Navigator</h2>
+            <p class="panel-sub" id="timelineSummary">Click any clip, cut marker, or waveform position to seek and audition transitions</p>
+          </div>
+        </div>
+
+        <div class="timeline-shell" id="timelineShell">
+          <div class="timeline-ruler" id="timeRuler" aria-hidden="true"></div>
+
+          <div class="timeline-track-row">
+            <span class="track-label">Clips</span>
+            <div class="track-lane clip-lane" id="clipBlocksTrack" role="list" aria-label="Sequential clip blocks"></div>
+          </div>
+
+          <div class="timeline-track-row">
+            <span class="track-label">Cuts</span>
+            <div class="track-lane cut-lane" id="cutMarkersTrack" aria-label="Transition cut markers"></div>
+          </div>
+
+          <div class="timeline-track-row">
+            <span class="track-label">Song</span>
+            <div class="track-lane wave-lane" id="waveformLane">
+              <canvas id="waveformCanvas" height="68"></canvas>
+              <span class="wave-placeholder" id="waveformHint">Load a song to inspect audio waveform alignment</span>
+            </div>
+          </div>
+
+          <div class="playhead-overlay" id="playheadOverlay">
+            <div class="playhead-line" id="playheadLine">
+              <div class="playhead-handle"></div>
+            </div>
+            <div class="playhead-tooltip" id="playheadTooltip" hidden>0:00.0</div>
+          </div>
+        </div>
+
+        <div class="clips-header-row">
+          <h3>Shorts Sequence &amp; Cuts</h3>
+          <span class="muted-text" id="clipsCountBadge">0 parts</span>
+        </div>
+        <div class="clips-list" id="clipsList">
+          <p class="empty-list-msg">No clips in sequence yet. Load MP4 Shorts or a workspace folder/zip above.</p>
+        </div>
+      </section>
+
+      <!-- STEP 3: DOWNLOAD & EXPORT CENTER -->
+      <section class="panel" id="exportCard" aria-labelledby="exportHeading">
+        <div class="panel-header">
+          <div>
+            <h2 id="exportHeading">3. Download &amp; Export Center</h2>
+            <p class="panel-sub">Export your updated plan, individual clips, 15 ms micro-faded WAV song slices, or a complete ZIP bundle</p>
+          </div>
+        </div>
+
+        <div class="export-actions-grid">
+          <button type="button" class="btn btn-accent" id="dlVerifyBtn" disabled>
+            Download Verification MP4
+          </button>
+          <button type="button" class="btn" id="dlManifestBtn" disabled>
+            Export manifest.json
+          </button>
+          <button type="button" class="btn" id="dlWavZipBtn" disabled>
+            Download WAV Song Slices (.zip)
+          </button>
+          <button type="button" class="btn btn-primary" id="dlAllZipBtn" disabled>
+            Download All as ZIP
+          </button>
+          <a class="btn btn-ghost" id="dlToolkitBtn" href="download/toolkit.zip" hidden>
+            Get Windows 1-Click Kit (.zip)
+          </a>
+        </div>
+        <p class="export-status" id="exportStatus" role="status"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="jszip.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

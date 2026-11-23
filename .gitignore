@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+dist/
+upload/
+shorts_workspace/
+*.mp4
+*.mov
+*.webm
+*.mp3
+*.m4a
+*.wav
+.DS_Store

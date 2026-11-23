@@ -1,0 +1,20 @@
+services:
+  studio:
+    build: .
+    ports:
+      - "8766:8766"
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "8766"
+    volumes:
+      - shorts_data:/app/shorts_workspace
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS \"http://127.0.0.1:$${PORT:-8766}/api/health\" || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  shorts_data:
